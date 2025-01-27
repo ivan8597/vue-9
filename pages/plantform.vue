@@ -1,53 +1,41 @@
 <template>
-  <div>
-    <h1>Управление растениями</h1>
-    <form @submit.prevent="submitPlant" class="plantform">
-      <input
-        v-model="name"
-        placeholder="Название растения"
-        required
-        class="input-field"
+  <div class="container">
+    <div class="form-container">
+      <h1>Управление растениями</h1>
+      <PlantsForm
+        :formData="formData"
+        :onSubmit="submitPlant"
+        submitButtonText="Добавить растение"
       />
-      <input
-        v-model="watering"
-        placeholder="Когда поливать"
-        required
-        class="input-field"
-      />
-      <input
-        v-model="fertilizing"
-        placeholder="Когда удобрять"
-        required
-        class="input-field"
-      />
-      <input
-        v-model="repotting"
-        placeholder="Когда пересаживать"
-        required
-        class="input-field"
-      />
-      <button type="submit" class="submit-button">Добавить растение</button>
-    </form>
+    </div>
 
     <div class="plant-list" v-if="plants.length">
       <h2>Мои растения</h2>
       <ul>
         <li v-for="plant in plants" :key="plant.id" class="plant-item">
           <div class="plant-info">
-            <span class="plant-name">{{ plant.name }}</span>
-            <span class="plant-watering">Поливать: {{ plant.watering }}</span>
+            <div class="plant-care">
+              <div class="plant-name">{{ plant.name }}</div>
+              <div class="plant-watering">
+                <span>Поливать:</span> {{ plant.watering }}
+              </div>
+              <div class="plant-fertilizing">
+                <span>Удобрять:</span> {{ plant.fertilizing }}
+              </div>
+              <div class="plant-repotting">
+                <span>Пересаживать:</span> {{ plant.repotting }}
+              </div>
+            </div>
+            <div class="plant-note"><span>Заметки: </span>{{ plant.note }}</div>
           </div>
-          <div class="plant-care">
-            <span class="plant-fertilizing">Удобрять: {{ plant.fertilizing }}</span>
-            <span class="plant-repotting">Пересаживать: {{ plant.repotting }}</span>
+          <div class="button-container">
+            <button @click="openEditModal(plant)">Редактировать</button>
+            <button @click="deletePlant(plant.id)">Удалить</button>
           </div>
-          <button @click="openEditModal(plant)">Редактировать</button>
-          <button @click="deletePlant(plant.id)">Удалить</button>
         </li>
       </ul>
     </div>
 
-    <!-- Модальное окно для редактирования -->
     <ModalPlants
       v-if="isModalOpen"
       :plant="currentPlant"
@@ -61,36 +49,42 @@
 import { defineComponent, computed, ref } from "vue";
 import { usePlantsStore } from "@/src/store/plants";
 import ModalPlants from "@/src/components/ModalPlants.vue";
+import PlantsForm from "@/src/components/PlantsForm.vue";
 
 export default defineComponent({
   components: {
     ModalPlants,
+    PlantsForm,
   },
   setup() {
     const store = usePlantsStore();
-    store.fetchPlants(); // Загружаем растения из хранилища
+    store.fetchPlants();
     const plants = computed(() => store.plants);
 
-    const name = ref("");
-    const watering = ref("");
-    const fertilizing = ref("");
-    const repotting = ref("");
-    
+    const formData = ref({
+      name: "",
+      watering: "",
+      fertilizing: "",
+      repotting: "",
+      note: "",
+    });
+
     const currentPlant = ref(null);
     const isModalOpen = ref(false);
 
     const submitPlant = async () => {
-      await store.addPlant({
-        name: name.value,
-        watering: watering.value,
-        fertilizing: fertilizing.value,
-        repotting: repotting.value,
-      });
-      name.value = "";
-      watering.value = "";
-      fertilizing.value = "";
-      repotting.value = "";
-      store.fetchPlants(); // Обновляем список растений
+      console.log("Current values:", formData.value);
+      await store.addPlant(formData.value);
+      console.log("Added new plant:", formData.value);
+      // Сброс значений
+      formData.value = {
+        name: "",
+        watering: "",
+        fertilizing: "",
+        repotting: "",
+        note: "",
+      };
+      store.fetchPlants();
     };
 
     const deletePlant = (id: string) => {
@@ -98,26 +92,25 @@ export default defineComponent({
     };
 
     const openEditModal = (plant) => {
-      currentPlant.value = plant; // Устанавливаем текущее растение для редактирования
-      isModalOpen.value = true; // Открываем модальное окно
+      console.log("Opening modal with plant data:", plant);
+      currentPlant.value = { ...plant };
+      isModalOpen.value = true;
     };
 
     const closeEditModal = () => {
-      isModalOpen.value = false; // Закрываем модальное окно
-      currentPlant.value = null; // Сбрасываем текущее растение
+      isModalOpen.value = false;
+      currentPlant.value = null;
     };
 
     const savePlant = (updatedPlant) => {
-      store.editPlant(currentPlant.value.id, updatedPlant); // Обновляем растение
-      closeEditModal(); // Закрываем модальное окно
+      console.log("Saving plant data:", updatedPlant);
+      store.editPlant(currentPlant.value.id, updatedPlant);
+      closeEditModal();
     };
 
     return {
       plants,
-      name,
-      watering,
-      fertilizing,
-      repotting,
+      formData,
       submitPlant,
       deletePlant,
       openEditModal,
@@ -131,98 +124,120 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.plantform {
-  background-color: #f9f9f9; /* Светлый фон */
-  border-radius: 12px; /* Скругление углов */
-  padding: 20px; /* Отступы внутри формы */
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); /* Тень для глубины */
-  max-width: 400px; /* Максимальная ширина формы */
-  margin: 20px auto; /* Центрирование формы */
+.container {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
 }
 
-.input-field {
-  width: 100%; /* Полная ширина */
-  padding: 12px; /* Паддинг внутри полей */
-  margin: 10px 0; /* Отступы между полями */
-  border: 1px solid #ccc; /* Светлая рамка */
-  border-radius: 6px; /* Скругление углов */
-  font-size: 16px; /* Размер шрифта */
-  transition: border-color 0.3s; /* Плавный переход цвета рамки */
+.form-container {
+  flex: 1;
+  max-width: 400px;
+  margin-right: 20px;
 }
-
-.input-field:focus {
-  border-color: #3498db; /* Цвет рамки при фокусе */
-  outline: none; /* Убираем стандартную рамку при фокусе */
-  box-shadow: 0 0 5px rgba(52, 152, 219, 0.5); /* Легкая тень при фокусе */
-}
-
-.submit-button {
-  background-color: #28a745; /* Зеленый цвет кнопки */
-  color: white; /* Цвет текста */
-  padding: 10px 15px; /* Паддинг внутри кнопки */
-  border: none; /* Убираем рамку */
-  border-radius: 6px; /* Скругление углов */
-  cursor: pointer; /* Указатель при наведении */
-  font-size: 16px; /* Размер шрифта */
-  transition: background-color 0.3s; /* Плавный переход цвета фона */
-}
-
-.submit-button:hover {
-  background-color: #218838; /* Темный зеленый цвет при наведении */
-}
-
 .plant-list {
-  background-color: #f0f8ff; /* Легкий фон */
+  position: relative;
+  background-color: #f0f8ff;
   border-radius: 12px;
   padding: 20px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  max-width: 400px;
+  max-width: 900px;
   margin: 20px auto;
-  font-family: Arial, sans-serif; /* Шрифт для всего компонента */
+  max-height: 700px;
+  overflow-y: auto; 
 }
 
 .plant-list h2 {
+  background-color: #f0f8ff; 
+  padding: 10px 0; 
+  z-index: 10; 
   text-align: center;
-  color: #2c3e50; /* Темный цвет заголовка */
-  margin-bottom: 20px; /* Отступ снизу */
+  color: #2c3e50; 
 }
 
 ul {
-  list-style-type: none; /* Убираем маркеры */
-  padding: 0; /* Убираем отступы */
+  list-style-type: none;
+  padding: 0;
 }
 
 .plant-item {
-  background-color: #ffffff; /* Белый фон для элементов списка */
-  margin: 10px 0; /* Отступы между элементами */
+  display: flex;
+  justify-content: space-between; 
+  align-items: center; 
+  margin: 10px 0;
   padding: 15px;
+  background-color: white;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  transition: transform 0.2s, box-shadow 0.2s; /* Плавный эффект при наведении */
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .plant-item:hover {
-  transform: translateY(-2px); /* Подъем при наведении */
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); /* Увеличенная тень при наведении */
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
 }
 
 .plant-info {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: bold; /* Жирный шрифт для имени растения */
+  justify-content: space-between; 
+  align-items: flex-start; 
+}
+
+span {
+  font-weight: bold;
+}
+.plant-name {
+  font-weight: bold; 
+  font-size: 16px;
+  color: #3498db; 
 }
 
 .plant-care {
-  margin-top: 5px;
-  font-size: 14px;
-  color: #7f8c8d; /* Серый цвет для дополнительной информации */
+  display: flex;
+  flex-direction: column; 
+  flex: 1; 
+
+  margin-right: 19px;
 }
 
+.plant-watering,
 .plant-fertilizing,
 .plant-repotting {
-  display: inline-block; /* Отображение в одной строке */
-  margin-right: 15px; /* Отступ между элементами */
+  font-size: 14px;
+  color: #7f8c8d; 
+}
+
+.plant-note {
+  font-size: 14px;
+  color: #7f8c8d;
+  font-style: italic;
+  margin-top: 10px; 
+}
+
+.button-container {
+  display: flex;
+  justify-content: flex-end; 
+  margin-top: 10px; 
+}
+
+button {
+  background-color: #3498db; 
+  color: white;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-left: 10px; 
+  transition: background-color 0.3s;
+}
+
+button:hover {
+  background-color: #2980b9; 
+}
+
+button:focus {
+  outline: none; 
 }
 
 .modal {
@@ -231,17 +246,17 @@ ul {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5); /* Полупрозрачный фон */
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
 .modal-content {
-  background-color: white; /* Белый фон для модального окна */
+  background-color: white;
   padding: 20px;
   border-radius: 10px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  width: 300px; /* Ширина модального окна */
+  width: 300px;
 }
 </style>

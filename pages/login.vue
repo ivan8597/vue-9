@@ -2,7 +2,7 @@
   <div class="auth-container">
     <h2>Авторизация</h2>
     <form @submit.prevent="login" class="auth-form">
-      <input v-model="username" placeholder="Имя пользователя" required />
+      <input v-model="email" type="email" placeholder="Электронная почта" required />
       <input v-model="password" type="password" placeholder="Пароль" required />
       <button type="submit">Войти</button>
     </form>
@@ -16,19 +16,24 @@ import { useRouter } from "vue-router";
 export default defineComponent({
   setup() {
     const router = useRouter();
-    const username = ref("");
+    const email = ref("");
     const password = ref("");
 
     const login = () => {
-      if (username.value === "admin" && password.value === "password") {
-        localStorage.setItem("isAuthenticated", "true");
-        router.push("/plantform");
-      } else {
-        alert("Неверное имя пользователя или пароль");
+      // Проверяем, что поля не пустые
+      if (!email.value || !password.value) {
+        alert("Пожалуйста, заполните все поля");
+        return;
       }
+
+      // Сохраняем электронную почту и пароль в localStorage
+      localStorage.setItem("isAuthenticated", "true");
+      localStorage.setItem("email", email.value); // Сохраняем электронную почту
+      localStorage.setItem("password", password.value); // Сохраняем пароль
+      router.push("/plantform");
     };
 
-    return { username, password, login };
+    return { email, password, login };
   },
 });
 </script>
